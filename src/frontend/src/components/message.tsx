@@ -123,6 +123,7 @@ export const MessageComponent: FC<MessageProps> = ({
   const { content, sources } = message;
   const [parsedMessage, setParsedMessage] = useState<string>(content);
   const [contentForCopy, setContentForCopy] = useState<string>(content);
+  const [plainContentForCopy, setPlainContentForCopy] = useState<string>(content);
 
   useEffect(() => {
     const citationRegex = /\s*(\[\d+\])/g;
@@ -149,9 +150,11 @@ export const MessageComponent: FC<MessageProps> = ({
     });
     tmpContentForCopy = tmpContentForCopy.replace(/^\*\*(.+)\*\*/g, '## $1');
     tmpContentForCopy += `\n\n${sourcesForCopy.join('\n')}\n\n`;
+    const plainContent = content.replace(citationRegex, '');
 
     setParsedMessage(newMessage);
     setContentForCopy(tmpContentForCopy);
+    setPlainContentForCopy(plainContent);
 
   }, [content, sources]);
 
@@ -170,7 +173,10 @@ export const MessageComponent: FC<MessageProps> = ({
       >
         {parsedMessage}
       </MemoizedReactMarkdown>
-      <AnswerActions text={contentForCopy} />
+      <AnswerActions
+        text={contentForCopy}
+        plaintext={plainContentForCopy}
+      />
     </>
   );
 };
