@@ -1,9 +1,8 @@
 import { AssistantMessageContent } from "./assistant-message";
 import { Separator } from "./ui/separator";
 import { UserMessageContent } from "./user-message";
-import { memo } from "react";
+import { Fragment, memo } from "react";
 import {
-  AgentSearchFullResponse,
   ChatMessage,
   MessageRole,
 } from "../../generated";
@@ -27,19 +26,19 @@ const MessagesList = ({
     <div className="flex flex-col pb-28">
       {messages.map((message, index) =>
         message.role === MessageRole.USER ? (
-          <UserMessageContent key={index} message={message} />
+          <UserMessageContent key={`user-${index}`} message={message} />
         ) : (
-          <>
+          <Fragment key={`assistant-${index}`}>
             {message.agent_response && (
               <ProSearchRender streamingProResponse={message.agent_response} />
             )}
             <AssistantMessageContent
-              key={index}
+              key={`assistant-${index}`}
               message={message}
               onRelatedQuestionSelect={onRelatedQuestionSelect}
             />
-            {index !== messages.length - 1 && <Separator />}
-          </>
+            {index !== messages.length - 1 && <Separator key={`separator-${index}`} />}
+          </Fragment>
         ),
       )}
       {isStreamingProSearch && (
