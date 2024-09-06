@@ -1,5 +1,6 @@
-import React, { FC, memo, useEffect, useMemo, useState } from "react";
+import React, { FC, memo, useEffect, useState } from "react";
 import { MemoizedReactMarkdown } from "./markdown";
+import { AnswerActions } from "./answer-actions";
 import rehypeRaw from "rehype-raw";
 
 import _ from "lodash";
@@ -21,14 +22,14 @@ export interface MessageProps {
 const CitationText = ({ number, href }: { number: number; href: string }) => {
   return `
   <button className="select-none no-underline">
-  <a className="" href="${href}" target="_blank">
-        <span className="relative -top-[0rem] inline-flex">
-          <span className="h-[1rem] min-w-[1rem] items-center justify-center rounded-full  text-center px-1 text-xs font-mono bg-muted text-[0.60rem] text-muted-foreground">
-            ${number}
-          </span>
+    <a className="" href="${href}" target="_blank">
+      <span className="relative -top-[0rem] inline-flex">
+        <span className="h-[1rem] min-w-[1rem] items-center justify-center rounded-full  text-center px-1 text-xs font-mono bg-muted text-[0.60rem] text-muted-foreground">
+          ${number}
         </span>
-      </a>
-    </button>`;
+      </span>
+    </a>
+  </button>`;
 };
 
 const Text = ({
@@ -121,36 +122,62 @@ export const MessageComponent: FC<MessageProps> = ({
 }) => {
   const { content, sources } = message;
   const [parsedMessage, setParsedMessage] = useState<string>(content);
+  const [contentForCopy, setContentForCopy] = useState<string>(content);
+  const [plainContentForCopy, setPlainContentForCopy] = useState<string>(content);
 
   useEffect(() => {
-    const citationRegex = /(\[\d+\])/g;
+    const citationRegex = /\s*(\[\d+\])/g;
     const newMessage = content.replace(citationRegex, (match) => {
-      const number = match.slice(1, -1);
+      const number = match.trim().slice(1, -1);
       const source = sources?.find(
         (source, idx) => idx + 1 === parseInt(number),
       );
+      if (!source) return "";
       return CitationText({
         number: parseInt(number),
         href: source?.url ?? "",
       });
     });
+    const sourcesForCopy = sources?.map((source, idx) => {
+      return `[${idx + 1}] [${source.title}](${source.url})`;
+    }) || [];
+    let tmpContentForCopy = content.replace(citationRegex, (match) => {
+      const number = match.trim().slice(1, -1);
+      const source = sources?.find((_, idx) => idx + 1 === parseInt(number, 10));
+      const href = source?.url ?? "";
+      if (!source) return "";
+      return `${match.replace(/(\s*)\[([0-9]+)\]/, '$1[\\[$2\\]]')}(${href})`;
+    });
+    tmpContentForCopy = tmpContentForCopy.replace(/^\*\*(.+)\*\*/g, '## $1');
+    tmpContentForCopy += `\n\n${sourcesForCopy.join('\n')}\n\n`;
+    const plainContent = content.replace(citationRegex, '');
+
     setParsedMessage(newMessage);
+    setContentForCopy(tmpContentForCopy);
+    setPlainContentForCopy(plainContent);
+
   }, [content, sources]);
 
   return (
-    <MemoizedReactMarkdown
-      components={{
-        // TODO: For some reason, can't pass props into the components
-        // @ts-ignore
-        p: isStreaming ? StreamingParagraph : Paragraph,
-        // @ts-ignore
-        li: isStreaming ? StreamingListItem : ListItem,
-      }}
-      className="prose dark:prose-invert inline leading-relaxed break-words "
-      rehypePlugins={[rehypeRaw]}
-    >
-      {parsedMessage}
-    </MemoizedReactMarkdown>
+    <>
+      <MemoizedReactMarkdown
+        components={{
+          // TODO: For some reason, can't pass props into the components
+          // @ts-ignore
+          p: isStreaming ? StreamingParagraph : Paragraph,
+          // @ts-ignore
+          li: isStreaming ? StreamingListItem : ListItem,
+        }}
+        className="prose dark:prose-invert inline leading-relaxed break-words"
+        rehypePlugins={[rehypeRaw]}
+      >
+        {parsedMessage}
+      </MemoizedReactMarkdown>
+      <AnswerActions
+        text={contentForCopy}
+        plaintext={plainContentForCopy}
+      />
+    </>
   );
 };
 
