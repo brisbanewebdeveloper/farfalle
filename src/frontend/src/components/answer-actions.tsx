@@ -12,11 +12,11 @@ import {
 import * as Tooltip from './ui/tooltip';
 
 export const AnswerActions = ({
-  text,
-  plaintext,
+  cbText,
+  cbPlaintext,
 }: {
-  text: string;
-  plaintext: string;
+  cbText: CallableFunction;
+  cbPlaintext: CallableFunction;
 }) => {
 
   const IconRewrite = RotateCwIcon;
@@ -50,7 +50,9 @@ export const AnswerActions = ({
 
   // Not using the packages like "copy-to-clipboard"
   // because the package seems to have some issues with handling new line codes
-  const getText = async (text: string, cb: CallableFunction) => {
+  const getText = async (cbText: CallableFunction, cb: CallableFunction) => {
+
+    let text = cbText();
 
     // "navigator.clipboard" is available only for HTTPS
     if (navigator.clipboard) {
@@ -60,6 +62,9 @@ export const AnswerActions = ({
         console.error('Failed to copy text: ', err);
       }
     } else {
+      // Passing "text" to TEXTAREA may contain malicious content, such as <img> tags.
+      // Using doc.body.textContent returns only text content, excluding URLs.
+      // This prevents malicious URLs from being fetched during document.execCommand('Copy').
       const doc = new DOMParser().parseFromString(text, 'text/html');
       text = '' + doc.body.textContent;
       const input = document.createElement('textarea');
@@ -108,7 +113,7 @@ export const AnswerActions = ({
       <div className="flex items-center gap-x-xs">
 
         {item(
-          <button type="button" className="mr-3" onClick={() => getText(text, handleCopy)}>
+          <button type="button" className="mr-3" onClick={() => getText(cbText, handleCopy)}>
             {copied ? (
               <IconCopied
                 size={16}
@@ -123,7 +128,7 @@ export const AnswerActions = ({
 
         {/* Copy as Plain Text */}
         {item(
-          <button type="button" className="mr-3" onClick={() => getText(plaintext, handleCopyPlain)}>
+          <button type="button" className="mr-3" onClick={() => getText(cbPlaintext, handleCopyPlain)}>
             {copiedPlain ? (
               <IconCopied
                 size={16}

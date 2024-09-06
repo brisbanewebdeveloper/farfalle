@@ -1,4 +1,4 @@
-import React, { FC, memo, useEffect, useState } from "react";
+import React, { FC, memo, use, useEffect, useState } from "react";
 import { MemoizedReactMarkdown } from "./markdown";
 import { AnswerActions } from "./answer-actions";
 import rehypeRaw from "rehype-raw";
@@ -6,7 +6,7 @@ import rehypeRaw from "rehype-raw";
 import _ from "lodash";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "./ui/skeleton";
-import { ChatMessage } from "../../generated";
+import { ChatMessage, SearchResult } from "../../generated";
 
 function chunkString(str: string): string[] {
   const words = str.split(" ");
@@ -125,7 +125,7 @@ export const MessageComponent: FC<MessageProps> = ({
   const [contentForCopy, setContentForCopy] = useState<string>(content);
   const [plainContentForCopy, setPlainContentForCopy] = useState<string>(content);
 
-  useEffect(() => {
+  const processText = (content: string, sources: Array<SearchResult> | null) => {
     const citationRegex = /\s*(\[\d+\])/g;
     const newMessage = content.replace(citationRegex, (match) => {
       const number = match.trim().slice(1, -1);
@@ -141,6 +141,14 @@ export const MessageComponent: FC<MessageProps> = ({
     const sourcesForCopy = sources?.map((source, idx) => {
       return `[${idx + 1}] [${source.title}](${source.url})`;
     }) || [];
+
+    // Convert
+    // "[1](https://example.com/...)"
+    // to
+    // "[\[1\]](https://example.com/...)"
+    // so that the markdown is going to be treated as
+    // "[1](https://example.com/...)"
+    // when pasting to
     let tmpContentForCopy = content.replace(citationRegex, (match) => {
       const number = match.trim().slice(1, -1);
       const source = sources?.find((_, idx) => idx + 1 === parseInt(number, 10));
@@ -148,15 +156,27 @@ export const MessageComponent: FC<MessageProps> = ({
       if (!source) return "";
       return `${match.replace(/(\s*)\[([0-9]+)\]/, '$1[\\[$2\\]]')}(${href})`;
     });
+
+    // Convert the lines starting with the bold text as header
     tmpContentForCopy = tmpContentForCopy.replace(/^\*\*(.+)\*\*/g, '## $1');
-    tmpContentForCopy += `\n\n${sourcesForCopy.join('\n')}\n\n`;
-    const plainContent = content.replace(citationRegex, '');
+    tmpContentForCopy += `\n\n${sourcesForCopy.join('\n')}\n`;
+
+    // Take out "References:" at the end of the answer
+    let plainContent = content.replace(citationRegex, '');
+    plainContent = plainContent.replace(/References:.*/g, '');
+    plainContent = plainContent.replace(/\n\n$/, '');
 
     setParsedMessage(newMessage);
     setContentForCopy(tmpContentForCopy);
     setPlainContentForCopy(plainContent);
+  };
 
+  useEffect(() => {
+    processText(content, sources || null);
   }, [content, sources]);
+
+  const getText = () => contentForCopy;
+  const getPlaintext = () => plainContentForCopy;
 
   return (
     <>
@@ -174,8 +194,8 @@ export const MessageComponent: FC<MessageProps> = ({
         {parsedMessage}
       </MemoizedReactMarkdown>
       <AnswerActions
-        text={contentForCopy}
-        plaintext={plainContentForCopy}
+        cbText={getText}
+        cbPlaintext={getPlaintext}
       />
     </>
   );
