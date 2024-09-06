@@ -160,11 +160,16 @@ export const MessageComponent: FC<MessageProps> = ({
     // Convert the lines starting with the bold text as header
     tmpContentForCopy = tmpContentForCopy.replace(/^\*\*(.+)\*\*/g, '## $1');
     tmpContentForCopy += `\n\n${sourcesForCopy.join('\n')}\n`;
+    while (tmpContentForCopy.endsWith("\n\n")) {
+      tmpContentForCopy = tmpContentForCopy.replace(/\n\n$/, '');
+    }
 
     // Take out "References:" at the end of the answer
     let plainContent = content.replace(citationRegex, '');
     plainContent = plainContent.replace(/References:.*/g, '');
-    plainContent = plainContent.replace(/\n\n$/, '');
+    while (tmpContentForCopy.endsWith("\n\n")) {
+      plainContent = plainContent.replace(/\n\n$/, '');
+    }
 
     setParsedMessage(newMessage);
     setContentForCopy(tmpContentForCopy);
